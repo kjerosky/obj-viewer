@@ -15,6 +15,7 @@ public:
     void add_vertex(Vector3& vertex);
     void add_normal(Vector3& normal);
     void add_texture_coordinate(Vector2& texture_coordinate);
+    void add_face(Face& face);
 
     void print_debug_info();
 
@@ -23,6 +24,7 @@ private:
     std::vector<Vector3> vertices;
     std::vector<Vector3> normals;
     std::vector<Vector2> texture_coordinates;
+    std::vector<Face> faces;
 };
 
 #endif

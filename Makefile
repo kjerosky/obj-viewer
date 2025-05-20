@@ -1,7 +1,7 @@
 EXECUTABLE = obj-viewer
 
 CC = g++
-FLAGS = --std=c++17 -Wall
+FLAGS = --std=c++17 -Wall -Wextra -g
 
 SOURCES = \
 	main.cpp \
@@ -12,4 +12,4 @@ $(EXECUTABLE):
 	$(CC) $(FLAGS) -o $(EXECUTABLE) $(SOURCES)
 
 clean:
-	rm -rf $(EXECUTABLE)
+	rm -rf $(EXECUTABLE) *.dSYM

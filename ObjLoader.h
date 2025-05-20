@@ -6,6 +6,7 @@
 #include <string>
 
 #include "Model.h"
+#include "containers_3d.h"
 
 class ObjLoader {
 
@@ -19,6 +20,9 @@ public:
 private:
 
     std::vector<std::string> split_string_by_whitespace(const std::string& str);
+    std::vector<std::string> split_string_by_character(const std::string& str, const char delimiter);
+
+    Face create_face_from_face_line_tokens(const std::vector<std::string>& face_line_tokens);
 };
 
 #endif

@@ -13,10 +13,10 @@ int main(int argc, char** argv) {
     std::optional<Model> model = obj_loader.load_from_file(argv[1]);
     if (!model.has_value()) {
         std::cerr << "[ERROR] Could not open file \"" << argv[1] << "\"" << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     model.value().print_debug_info();
 
-    return 0;
+    return EXIT_SUCCESS;
 }

@@ -76,6 +76,16 @@ std::optional<Model> ObjLoader::load_from_file(const char* filename) {
             texture_coordinate.y = std::stof(tokens[2]);
 
             model.add_texture_coordinate(texture_coordinate);
+        } else if (tokens[0] == "f") {
+            if (tokens.size() != 4) {
+                std::cerr << "[ERROR] Face line contains unexpected number of tokens!" << std::endl;
+                std::cerr << "[ERROR] Please note that only triangles are currently supported." << std::endl;
+                std::cerr << "[ERROR] Line content: " << line << std::endl;
+                return std::nullopt;
+            }
+
+            Face face = create_face_from_face_line_tokens(tokens);
+            model.add_face(face);
         } else {
             std::cerr << "[WARN] Ignoring unknown token: " << tokens[0] << std::endl;
         }
@@ -96,4 +106,43 @@ std::vector<std::string> ObjLoader::split_string_by_whitespace(const std::string
     }
 
     return tokens;
+}
+
+// --------------------------------------------------------------------------
+
+std::vector<std::string> ObjLoader::split_string_by_character(const std::string& str, const char delimiter) {
+    std::istringstream stream(str);
+    std::vector<std::string> tokens;
+
+    std::string token;
+    while (std::getline(stream, token, delimiter)) {
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
+
+// --------------------------------------------------------------------------
+
+Face ObjLoader::create_face_from_face_line_tokens(const std::vector<std::string>& face_line_tokens) {
+    Face face;
+
+    for (int i = 0; i < 3; i++) {
+        std::string face_line_token = face_line_tokens[1 + i];
+        std::vector<std::string> tokens = split_string_by_character(face_line_token, '/');
+
+        face.vertex_indices[i] = std::stoi(tokens[0]) - 1;
+        face.texture_coordinate_indices[i] = -1;
+        face.normal_indices[i] = -1;
+
+        if (tokens.size() >= 2 && tokens[1] != "") {
+            face.texture_coordinate_indices[i] = std::stoi(tokens[1]) - 1;
+        }
+
+        if (tokens.size() >= 3 && tokens[2] != "") {
+            face.normal_indices[i] = std::stoi(tokens[2]) - 1;
+        }
+    }
+
+    return face;
 }
