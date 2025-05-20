@@ -20,8 +20,8 @@ ObjLoader::~ObjLoader() {
 
 // --------------------------------------------------------------------------
 
-std::optional<Model> ObjLoader::load_from_file(const char* filename) {
-    std::ifstream file(filename);
+std::optional<Model> ObjLoader::load_from_file(const std::string& file_path) {
+    std::ifstream file(file_path);
     if (!file) {
         return std::nullopt;
     }

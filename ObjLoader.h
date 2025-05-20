@@ -15,7 +15,7 @@ public:
     ObjLoader();
     ~ObjLoader();
 
-    std::optional<Model> load_from_file(const char* filename);
+    std::optional<Model> load_from_file(const std::string& file_path);
 
 private:
 
