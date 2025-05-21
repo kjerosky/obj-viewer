@@ -17,6 +17,8 @@ public:
     void add_texture_coordinate(Vector2& texture_coordinate);
     void add_face(Face& face);
 
+    float* get_buffer_data(int& size_in_bytes, int& vertex_count);
+
     void print_debug_info();
 
 private:
