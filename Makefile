@@ -1,7 +1,7 @@
 EXECUTABLE = obj-viewer
 
 CC = g++
-FLAGS = --std=c++17 -Wall -Wextra -g
+FLAGS = --std=c++17 -Wall -g
 
 INCLUDE_PATHS = -I /opt/homebrew/include
 LIBRARY_PATHS = -L /opt/homebrew/lib

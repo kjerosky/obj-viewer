@@ -1,7 +1,5 @@
 #include "Model.h"
 
-#include <iostream>
-
 Model::Model() {
     // do nothing for now
 }
@@ -39,9 +37,9 @@ void Model::add_face(Face& face) {
 // --------------------------------------------------------------------------
 
 float* Model::get_buffer_data(int& size_in_bytes, int& vertex_count) {
-    // For now, we'll provide a very crude vertex-only buffer data array for triangle faces.
+    // For now, we'll only provide vertices and normals in the buffer data data for triangle faces.
 
-    int buffer_data_size = faces.size() * 3 * 3; // 3 vertices per face, 3 floats per vertex
+    int buffer_data_size = faces.size() * 3 * 6; // 3 vertices per face, 6 floats per vertex
     float* buffer_data = new float[buffer_data_size];
 
     int buffer_data_index = 0;
@@ -51,6 +49,11 @@ float* Model::get_buffer_data(int& size_in_bytes, int& vertex_count) {
             buffer_data[buffer_data_index++] = vertices[vertex_index].x;
             buffer_data[buffer_data_index++] = vertices[vertex_index].y;
             buffer_data[buffer_data_index++] = vertices[vertex_index].z;
+
+            int normal_index = face.normal_indices[i];
+            buffer_data[buffer_data_index++] = normals[normal_index].x;
+            buffer_data[buffer_data_index++] = normals[normal_index].y;
+            buffer_data[buffer_data_index++] = normals[normal_index].z;
         }
     }
 
@@ -61,9 +64,12 @@ float* Model::get_buffer_data(int& size_in_bytes, int& vertex_count) {
 
 // --------------------------------------------------------------------------
 
-void Model::print_debug_info() {
-    std::cout << "Vertices: " << vertices.size() << std::endl;
-    std::cout << "Normals: " << normals.size() << std::endl;
-    std::cout << "Texture coordinates: " << texture_coordinates.size() << std::endl;
-    std::cout << "Faces: " << faces.size() << std::endl;
+ModelStatistics Model::get_statistics() {
+    ModelStatistics statistics;
+    statistics.vertex_count = vertices.size();
+    statistics.normal_count = normals.size();
+    statistics.texture_coordinate_count = texture_coordinates.size();
+    statistics.face_count = faces.size();
+
+    return statistics;
 }

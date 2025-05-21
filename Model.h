@@ -5,6 +5,13 @@
 
 #include "containers_3d.h"
 
+struct ModelStatistics {
+    int vertex_count;
+    int normal_count;
+    int texture_coordinate_count;
+    int face_count;
+};
+
 class Model {
 
 public:
@@ -18,8 +25,7 @@ public:
     void add_face(Face& face);
 
     float* get_buffer_data(int& size_in_bytes, int& vertex_count);
-
-    void print_debug_info();
+    ModelStatistics get_statistics();
 
 private:
 

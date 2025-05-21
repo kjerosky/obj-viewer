@@ -3,24 +3,44 @@
 #include <SDL3/SDL_opengl.h>
 #include <iostream>
 #include <stdlib.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "ObjLoader.h"
 
 const char* vertex_shader_source = R"glsl(
     #version 330 core
-    layout (location = 0) in vec3 in_pos;
+
+    layout (location = 0) in vec3 in_position;
+    layout (location = 1) in vec3 in_normal;
+
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+
+    out vec3 normal;
 
     void main() {
-        gl_Position = vec4(in_pos, 1.0);
+        gl_Position = projection * view * model * vec4(in_position, 1.0);
+
+        normal = in_normal;
     }
 )glsl";
 
 const char* fragment_shader_source = R"glsl(
     #version 330 core
+
+    in vec3 normal;
+
     out vec4 frag_color;
 
     void main() {
-        frag_color = vec4(1.0, 1.0, 1.0, 1.0);
+        vec3 light_dir = normalize(vec3(1.0, -1.0, -1.0));
+        float diffuse = max(dot(normalize(normal), -light_dir), 0.0);
+        vec3 color = vec3(1.0) * diffuse;
+
+        frag_color = vec4(color, 1.0);
     }
 )glsl";
 
@@ -49,6 +69,9 @@ bool check_program_linkage(GLuint program) {
 }
 
 int main(int argc, char** argv) {
+    const int WINDOW_WIDTH = 500;
+    const int WINDOW_HEIGHT = 500;
+
     std::string program_name = argv[0];
     if (argc != 2) {
         std::cerr << "Usage: " << program_name << " OBJ_FILE" << std::endl;
@@ -65,7 +88,12 @@ int main(int argc, char** argv) {
     }
 
     Model model = loaded_model.value();
-    model.print_debug_info();
+    ModelStatistics statistics = model.get_statistics();
+    std::cout << "Vertices: " << statistics.vertex_count << std::endl;
+    std::cout << "Normals: " << statistics.normal_count << std::endl;
+    std::cout << "Texture coordinates: " << statistics.texture_coordinate_count << std::endl;
+    std::cout << "Faces: " << statistics.face_count << std::endl;
+    std::cout << std::endl;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << "\n";
@@ -85,7 +113,7 @@ int main(int argc, char** argv) {
     }
     window_title += " - OBJ Viewer";
 
-    SDL_Window* window = SDL_CreateWindow(window_title.c_str(), 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    SDL_Window* window = SDL_CreateWindow(window_title.c_str(), WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!window) {
         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << "\n";
         SDL_Quit();
@@ -144,8 +172,23 @@ int main(int argc, char** argv) {
     glBufferData(GL_ARRAY_BUFFER, buffer_data_size_in_bytes, buffer_data, GL_STATIC_DRAW);
     delete[] buffer_data;
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    GLint model_location = glGetUniformLocation(shader_program, "model");
+    GLint view_location = glGetUniformLocation(shader_program, "view");
+    GLint projection_location = glGetUniformLocation(shader_program, "projection");
+
+    float camera_x = 0.0f;
+    float camera_y = 0.0f;
+    float camera_z = 5.0f;
+
+    glEnable(GL_DEPTH_TEST);
+
+    const bool* keyboard = SDL_GetKeyboardState(nullptr);
 
     bool running = true;
     SDL_Event event;
@@ -160,10 +203,36 @@ int main(int argc, char** argv) {
             }
         }
 
+        float input_x = (keyboard[SDL_SCANCODE_D] ? 1 : 0) - (keyboard[SDL_SCANCODE_A] ? 1 : 0);
+        float input_y = (keyboard[SDL_SCANCODE_E] ? 1 : 0) - (keyboard[SDL_SCANCODE_Q] ? 1 : 0);
+        float input_z = (keyboard[SDL_SCANCODE_S] ? 1 : 0) - (keyboard[SDL_SCANCODE_W] ? 1 : 0);
+
+        camera_x += input_x * 0.001;
+        camera_y += input_y * 0.001;
+        camera_z += input_z * 0.001;
+
+        glm::mat4 model = glm::mat4(1.0);
+
+        glm::mat4 view = glm::lookAt(
+            glm::vec3(camera_x, camera_y, camera_z),
+            glm::vec3(camera_x, camera_y, camera_z - 1.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f),
+            ((float)WINDOW_WIDTH) / WINDOW_HEIGHT,
+            0.1f,
+            100.0f
+        );
+
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader_program);
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
