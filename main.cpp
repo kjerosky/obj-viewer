@@ -58,6 +58,17 @@ bool check_program_linkage(GLuint program) {
 
 // --------------------------------------------------------------------------
 
+float calculate_initial_camera_distance_to_object(glm::vec3& dimensions, float fovx, float fovy) {
+    float longest_obj_xz_distance_to_origin = glm::sqrt(0.5 * (dimensions.x * dimensions.x + dimensions.z * dimensions.z));
+
+    float best_vertical_distance = dimensions.y / (2.0f * glm::tan(fovy / 2.0f)) + longest_obj_xz_distance_to_origin;
+    float best_horizontal_distance = glm::max(dimensions.x, dimensions.z) / (2.0f * glm::tan(fovx / 2.0f)) + longest_obj_xz_distance_to_origin;
+
+    return glm::max(best_vertical_distance, best_horizontal_distance);
+}
+
+// --------------------------------------------------------------------------
+
 int main(int argc, char** argv) {
     const int WINDOW_WIDTH = 500;
     const int WINDOW_HEIGHT = 500;
@@ -82,6 +93,7 @@ int main(int argc, char** argv) {
     Model model = loaded_model.value();
 
     ModelStatistics statistics = model.get_statistics();
+    std::cout << std::endl;
     std::cout << "Vertices: " << statistics.vertex_count << std::endl;
     std::cout << "Normals: " << statistics.normal_count << std::endl;
     std::cout << "Texture coordinates: " << statistics.texture_coordinate_count << std::endl;
@@ -90,6 +102,9 @@ int main(int argc, char** argv) {
 
     ModelExtents extents = model.get_extents();
     std::cout << "Extents: " << glm::to_string(extents.min) << " => " << glm::to_string(extents.max) << std::endl;
+
+    glm::vec3 dimensions = extents.max - extents.min;
+    std::cout << "Dimensions: " << glm::to_string(dimensions) << std::endl;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << "\n";
@@ -199,12 +214,20 @@ int main(int argc, char** argv) {
     GLint base_color_location = glGetUniformLocation(shader_program, "base_color");
     GLint shininess_location = glGetUniformLocation(shader_program, "shininess");
 
-    glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 2.0f);
     glm::vec3 sun_direction = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
     glm::vec3 base_color = glm::vec3(0.0f, 1.0f, 0.0f);
 
     glm::mat4 centered_model_translation = glm::translate(glm::mat4(1.0), -0.5f * (extents.min + extents.max));
     float y_rotation_degrees = 0.0f;
+
+    const float ASPECT_RATIO = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+    const float FOV_Y = glm::radians(45.0f);
+    const float FOV_X = 2.0f * glm::atan(glm::tan(FOV_Y / 2.0f) * ASPECT_RATIO);
+    const float NEAR_CLIP_PLANE_DISTANCE = 0.1f;
+    const float FAR_CLIP_PLANE_DISTANCE = 100.0f;
+
+    float initial_camera_z = calculate_initial_camera_distance_to_object(dimensions, FOV_X, FOV_Y) + NEAR_CLIP_PLANE_DISTANCE;
+    glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, initial_camera_z);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -239,10 +262,10 @@ int main(int argc, char** argv) {
         );
 
         glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f),
-            ((float)WINDOW_WIDTH) / WINDOW_HEIGHT,
-            0.1f,
-            100.0f
+            FOV_Y,
+            ASPECT_RATIO,
+            NEAR_CLIP_PLANE_DISTANCE,
+            FAR_CLIP_PLANE_DISTANCE
         );
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
