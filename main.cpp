@@ -33,14 +33,22 @@ const char* fragment_shader_source = R"glsl(
 
     in vec3 normal;
 
+    uniform vec3 sun_direction;
+    uniform vec3 ambient_light;
+    uniform vec3 base_color;
+
     out vec4 frag_color;
 
     void main() {
-        vec3 light_dir = normalize(vec3(1.0, -1.0, -1.0));
-        float diffuse = max(dot(normalize(normal), -light_dir), 0.0);
-        vec3 color = vec3(1.0) * diffuse;
+        vec3 ambient = ambient_light * base_color;
 
-        frag_color = vec4(color, 1.0);
+        vec3 N = normalize(normal);
+        vec3 L = normalize(-sun_direction);
+        vec3 diffuse = max(dot(N, L), 0.0) * base_color;
+
+        vec3 final_color = clamp(ambient + diffuse, 0.0, 1.0);
+
+        frag_color = vec4(final_color, 1.0);
     }
 )glsl";
 
@@ -181,10 +189,13 @@ int main(int argc, char** argv) {
     GLint model_location = glGetUniformLocation(shader_program, "model");
     GLint view_location = glGetUniformLocation(shader_program, "view");
     GLint projection_location = glGetUniformLocation(shader_program, "projection");
+    GLint sun_direction_location = glGetUniformLocation(shader_program, "sun_direction");
+    GLint ambient_light_location = glGetUniformLocation(shader_program, "ambient_light");
+    GLint base_color_location = glGetUniformLocation(shader_program, "base_color");
 
-    float camera_x = 0.0f;
-    float camera_y = 0.0f;
-    float camera_z = 5.0f;
+    glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 5.0f);
+    glm::vec3 sun_direction = glm::vec3(0.0f, -1.0f, -1.0f);
+    glm::vec3 base_color = glm::vec3(0.0f, 1.0f, 0.0f);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -207,15 +218,13 @@ int main(int argc, char** argv) {
         float input_y = (keyboard[SDL_SCANCODE_E] ? 1 : 0) - (keyboard[SDL_SCANCODE_Q] ? 1 : 0);
         float input_z = (keyboard[SDL_SCANCODE_S] ? 1 : 0) - (keyboard[SDL_SCANCODE_W] ? 1 : 0);
 
-        camera_x += input_x * 0.001;
-        camera_y += input_y * 0.001;
-        camera_z += input_z * 0.001;
+        camera_position += glm::vec3(input_x * 0.001, input_y * 0.001, input_z * 0.001);
 
         glm::mat4 model = glm::mat4(1.0);
 
         glm::mat4 view = glm::lookAt(
-            glm::vec3(camera_x, camera_y, camera_z),
-            glm::vec3(camera_x, camera_y, camera_z - 1.0f),
+            camera_position,
+            camera_position + glm::vec3(0.0f, 0.0f, -1.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
@@ -233,6 +242,10 @@ int main(int argc, char** argv) {
         glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3fv(sun_direction_location, 1, glm::value_ptr(sun_direction));
+        glUniform3f(ambient_light_location, 0.2f, 0.2f, 0.2f);
+        glUniform3fv(base_color_location, 1, glm::value_ptr(base_color));
+
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
