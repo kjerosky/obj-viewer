@@ -2,6 +2,7 @@
 #define MODEL_H
 
 #include <vector>
+#include <glm/glm.hpp>
 
 #include "containers_3d.h"
 
@@ -10,6 +11,11 @@ struct ModelStatistics {
     int normal_count;
     int texture_coordinate_count;
     int face_count;
+};
+
+struct ModelExtents {
+    glm::vec3 min;
+    glm::vec3 max;
 };
 
 class Model {
@@ -26,6 +32,7 @@ public:
 
     float* get_buffer_data(int& size_in_bytes, int& vertex_count);
     ModelStatistics get_statistics();
+    ModelExtents get_extents();
 
 private:
 

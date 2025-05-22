@@ -1,5 +1,8 @@
 #include "Model.h"
 
+#include <limits>
+#include <algorithm>
+
 Model::Model() {
     // do nothing for now
 }
@@ -72,4 +75,27 @@ ModelStatistics Model::get_statistics() {
     statistics.face_count = faces.size();
 
     return statistics;
+}
+
+// --------------------------------------------------------------------------
+
+ModelExtents Model::get_extents() {
+    const float MIN_FLOAT_VALUE = std::numeric_limits<float>::min();
+    const float MAX_FLOAT_VALUE = std::numeric_limits<float>::max();
+
+    ModelExtents extents;
+    extents.min = glm::vec3(MAX_FLOAT_VALUE, MAX_FLOAT_VALUE, MAX_FLOAT_VALUE);
+    extents.max = glm::vec3(MIN_FLOAT_VALUE, MIN_FLOAT_VALUE, MIN_FLOAT_VALUE);
+
+    for (Vector3 vertex : vertices) {
+        extents.min.x = std::min(extents.min.x, vertex.x);
+        extents.min.y = std::min(extents.min.y, vertex.y);
+        extents.min.z = std::min(extents.min.z, vertex.z);
+
+        extents.max.x = std::max(extents.max.x, vertex.x);
+        extents.max.y = std::max(extents.max.y, vertex.y);
+        extents.max.z = std::max(extents.max.z, vertex.z);
+    }
+
+    return extents;
 }

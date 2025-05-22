@@ -10,6 +10,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
 #include "ObjLoader.h"
 
 bool read_file_into_string(const char* file_path, std::string& str) {
@@ -76,14 +79,17 @@ int main(int argc, char** argv) {
         std::cerr << "[ERROR] Could not open file \"" << file_path << "\"" << std::endl;
         return EXIT_FAILURE;
     }
-
     Model model = loaded_model.value();
+
     ModelStatistics statistics = model.get_statistics();
     std::cout << "Vertices: " << statistics.vertex_count << std::endl;
     std::cout << "Normals: " << statistics.normal_count << std::endl;
     std::cout << "Texture coordinates: " << statistics.texture_coordinate_count << std::endl;
     std::cout << "Faces: " << statistics.face_count << std::endl;
     std::cout << std::endl;
+
+    ModelExtents extents = model.get_extents();
+    std::cout << "Extents: " << glm::to_string(extents.min) << " => " << glm::to_string(extents.max) << std::endl;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << "\n";
@@ -131,6 +137,8 @@ int main(int argc, char** argv) {
         SDL_Quit();
         return EXIT_FAILURE;
     }
+
+    SDL_GL_SetSwapInterval(1);
 
     glewExperimental = GL_TRUE;
     GLenum glewStatus = glewInit();
@@ -191,17 +199,26 @@ int main(int argc, char** argv) {
     GLint base_color_location = glGetUniformLocation(shader_program, "base_color");
     GLint shininess_location = glGetUniformLocation(shader_program, "shininess");
 
-    glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 5.0f);
+    glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 2.0f);
     glm::vec3 sun_direction = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
     glm::vec3 base_color = glm::vec3(0.0f, 1.0f, 0.0f);
 
+    glm::mat4 centered_model_translation = glm::translate(glm::mat4(1.0), -0.5f * (extents.min + extents.max));
+    float y_rotation_degrees = 0.0f;
+
     glEnable(GL_DEPTH_TEST);
 
-    const bool* keyboard = SDL_GetKeyboardState(nullptr);
+    Uint64 previous_time = SDL_GetTicksNS();
+
+    const float ROTATION_DEGREES_PER_SECOND = 360.0f / 8.0f;
 
     bool running = true;
     SDL_Event event;
     while (running) {
+        Uint64 current_time = SDL_GetTicksNS();
+        float delta_time = (current_time - previous_time) / 1e9f;
+        previous_time = current_time;
+
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
@@ -212,13 +229,8 @@ int main(int argc, char** argv) {
             }
         }
 
-        float input_x = (keyboard[SDL_SCANCODE_D] ? 1 : 0) - (keyboard[SDL_SCANCODE_A] ? 1 : 0);
-        float input_y = (keyboard[SDL_SCANCODE_E] ? 1 : 0) - (keyboard[SDL_SCANCODE_Q] ? 1 : 0);
-        float input_z = (keyboard[SDL_SCANCODE_S] ? 1 : 0) - (keyboard[SDL_SCANCODE_W] ? 1 : 0);
-
-        camera_position += glm::vec3(input_x * 0.001, input_y * 0.001, input_z * 0.001);
-
-        glm::mat4 model = glm::mat4(1.0);
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(y_rotation_degrees), glm::vec3(0.0f, 1.0f, 0.0f)) * centered_model_translation;
+        y_rotation_degrees += ROTATION_DEGREES_PER_SECOND * delta_time;
 
         glm::mat4 view = glm::lookAt(
             camera_position,
