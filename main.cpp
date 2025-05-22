@@ -3,68 +3,29 @@
 #include <SDL3/SDL_opengl.h>
 #include <iostream>
 #include <stdlib.h>
+#include <string>
+#include <fstream>
+#include <sstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "ObjLoader.h"
 
-const char* vertex_shader_source = R"glsl(
-    #version 330 core
-
-    layout (location = 0) in vec3 in_position;
-    layout (location = 1) in vec3 in_normal;
-
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
-
-    out vec3 normal;
-    out vec3 frag_world_position;
-
-    void main() {
-        gl_Position = projection * view * model * vec4(in_position, 1.0);
-
-        mat3 normal_matrix = mat3(transpose(inverse(model)));
-        normal = normal_matrix * in_normal;
-
-        frag_world_position = (model * vec4(in_position, 1.0)).xyz;
+bool read_file_into_string(const char* file_path, std::string& str) {
+    std::ifstream file(file_path);
+    if (!file) {
+        return false;
     }
-)glsl";
 
-const char* fragment_shader_source = R"glsl(
-    #version 330 core
+    std::stringstream ss;
+    ss << file.rdbuf();
+    str = ss.str();
 
-    in vec3 normal;
-    in vec3 frag_world_position;
+    return true;
+}
 
-    uniform vec3 camera_world_position;
-    uniform vec3 sun_direction;
-    uniform vec3 ambient_light;
-    uniform vec3 base_color;
-    uniform float shininess;
-
-    out vec4 frag_color;
-
-    void main() {
-        vec3 N = normalize(normal);
-        vec3 L = normalize(-sun_direction);
-        vec3 V = normalize(camera_world_position - frag_world_position);
-        vec3 H = normalize(L + V);
-
-        vec3 ambient = ambient_light * base_color;
-
-        vec3 diffuse = max(dot(N, L), 0.0) * base_color;
-
-        float specular_angle = max(dot(N, H), 0.0);
-        float specular_amount = pow(specular_angle, shininess);
-        vec3 specular = specular_amount * vec3(1.0) * vec3(1.0);
-
-        vec3 final_color = clamp(ambient + diffuse + specular, 0.0, 1.0);
-
-        frag_color = vec4(final_color, 1.0);
-    }
-)glsl";
+// --------------------------------------------------------------------------
 
 bool check_shader_compilation(GLuint shader, const std::string& shader_type) {
     GLint success;
@@ -78,6 +39,8 @@ bool check_shader_compilation(GLuint shader, const std::string& shader_type) {
     return true;
 }
 
+// --------------------------------------------------------------------------
+
 bool check_program_linkage(GLuint program) {
     GLint success;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
@@ -90,9 +53,14 @@ bool check_program_linkage(GLuint program) {
     return true;
 }
 
+// --------------------------------------------------------------------------
+
 int main(int argc, char** argv) {
     const int WINDOW_WIDTH = 500;
     const int WINDOW_HEIGHT = 500;
+
+    const char* vertex_shader_file_path = "default.vert";
+    const char* fragment_shader_file_path = "default.frag";
 
     std::string program_name = argv[0];
     if (argc != 2) {
@@ -121,6 +89,20 @@ int main(int argc, char** argv) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << "\n";
         return EXIT_FAILURE;
     }
+
+    std::string vertex_shader_source_string;
+    if (!read_file_into_string(vertex_shader_file_path, vertex_shader_source_string)) {
+        std::cerr << "[ERROR] Could not open vertex shader file \"" << vertex_shader_file_path << "\"" << std::endl;
+        return EXIT_FAILURE;
+    }
+    const char* vertex_shader_source = vertex_shader_source_string.c_str();
+
+    std::string fragment_shader_source_string;
+    if (!read_file_into_string(fragment_shader_file_path, fragment_shader_source_string)) {
+        std::cerr << "[ERROR] Could not open fragment shader file \"" << fragment_shader_file_path << "\"" << std::endl;
+        return EXIT_FAILURE;
+    }
+    const char* fragment_shader_source = fragment_shader_source_string.c_str();
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
