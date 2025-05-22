@@ -20,11 +20,15 @@ const char* vertex_shader_source = R"glsl(
     uniform mat4 projection;
 
     out vec3 normal;
+    out vec3 frag_world_position;
 
     void main() {
         gl_Position = projection * view * model * vec4(in_position, 1.0);
 
-        normal = in_normal;
+        mat3 normal_matrix = mat3(transpose(inverse(model)));
+        normal = normal_matrix * in_normal;
+
+        frag_world_position = (model * vec4(in_position, 1.0)).xyz;
     }
 )glsl";
 
@@ -32,21 +36,31 @@ const char* fragment_shader_source = R"glsl(
     #version 330 core
 
     in vec3 normal;
+    in vec3 frag_world_position;
 
+    uniform vec3 camera_world_position;
     uniform vec3 sun_direction;
     uniform vec3 ambient_light;
     uniform vec3 base_color;
+    uniform float shininess;
 
     out vec4 frag_color;
 
     void main() {
-        vec3 ambient = ambient_light * base_color;
-
         vec3 N = normalize(normal);
         vec3 L = normalize(-sun_direction);
+        vec3 V = normalize(camera_world_position - frag_world_position);
+        vec3 H = normalize(L + V);
+
+        vec3 ambient = ambient_light * base_color;
+
         vec3 diffuse = max(dot(N, L), 0.0) * base_color;
 
-        vec3 final_color = clamp(ambient + diffuse, 0.0, 1.0);
+        float specular_angle = max(dot(N, H), 0.0);
+        float specular_amount = pow(specular_angle, shininess);
+        vec3 specular = specular_amount * vec3(1.0) * vec3(1.0);
+
+        vec3 final_color = clamp(ambient + diffuse + specular, 0.0, 1.0);
 
         frag_color = vec4(final_color, 1.0);
     }
@@ -189,12 +203,14 @@ int main(int argc, char** argv) {
     GLint model_location = glGetUniformLocation(shader_program, "model");
     GLint view_location = glGetUniformLocation(shader_program, "view");
     GLint projection_location = glGetUniformLocation(shader_program, "projection");
+    GLint camera_world_position_location = glGetUniformLocation(shader_program, "camera_world_position");
     GLint sun_direction_location = glGetUniformLocation(shader_program, "sun_direction");
     GLint ambient_light_location = glGetUniformLocation(shader_program, "ambient_light");
     GLint base_color_location = glGetUniformLocation(shader_program, "base_color");
+    GLint shininess_location = glGetUniformLocation(shader_program, "shininess");
 
     glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 5.0f);
-    glm::vec3 sun_direction = glm::vec3(0.0f, -1.0f, -1.0f);
+    glm::vec3 sun_direction = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
     glm::vec3 base_color = glm::vec3(0.0f, 1.0f, 0.0f);
 
     glEnable(GL_DEPTH_TEST);
@@ -242,9 +258,11 @@ int main(int argc, char** argv) {
         glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3fv(camera_world_position_location, 1, glm::value_ptr(camera_position));
         glUniform3fv(sun_direction_location, 1, glm::value_ptr(sun_direction));
         glUniform3f(ambient_light_location, 0.2f, 0.2f, 0.2f);
         glUniform3fv(base_color_location, 1, glm::value_ptr(base_color));
+        glUniform1f(shininess_location, 32.0f);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, vertex_count);
