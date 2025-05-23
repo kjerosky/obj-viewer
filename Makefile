@@ -10,7 +10,8 @@ LIBRARIES = -lSDL3 -lGLEW -framework OpenGL
 SOURCES = \
 	main.cpp \
 	ObjLoader.cpp \
-	Model.cpp
+	Model.cpp \
+	MouseHandler.cpp
 
 $(EXECUTABLE):
 	$(CC) $(FLAGS) -o $(EXECUTABLE) $(SOURCES) $(INCLUDE_PATHS) $(LIBRARY_PATHS) $(LIBRARIES)

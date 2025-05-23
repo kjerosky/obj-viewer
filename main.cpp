@@ -14,6 +14,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include "ObjLoader.h"
+#include "MouseHandler.h"
 
 bool read_file_into_string(const char* file_path, std::string& str) {
     std::ifstream file(file_path);
@@ -218,7 +219,8 @@ int main(int argc, char** argv) {
     glm::vec3 base_color = glm::vec3(0.0f, 1.0f, 0.0f);
 
     glm::mat4 centered_model_translation = glm::translate(glm::mat4(1.0), -0.5f * (extents.min + extents.max));
-    float y_rotation_degrees = 0.0f;
+    float rotation_degrees_x = 0.0f;
+    float rotation_degrees_y = 0.0f;
 
     const float ASPECT_RATIO = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
     const float FOV_Y = glm::radians(45.0f);
@@ -231,17 +233,14 @@ int main(int argc, char** argv) {
 
     glEnable(GL_DEPTH_TEST);
 
-    Uint64 previous_time = SDL_GetTicksNS();
+    const float ROTATION_DEGREES_PER_PIXEL = 360.0f / glm::max(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    const float ROTATION_DEGREES_PER_SECOND = 360.0f / 8.0f;
+    MouseHandler mouse_handler(window);
 
     bool running = true;
     SDL_Event event;
     while (running) {
-        Uint64 current_time = SDL_GetTicksNS();
-        float delta_time = (current_time - previous_time) / 1e9f;
-        previous_time = current_time;
-
+        Vector2 mouse_drag_motion = { 0.0f, 0.0f };
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
@@ -249,19 +248,29 @@ int main(int argc, char** argv) {
                 if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
                     running = false;
                 }
+            } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
+                mouse_handler.handle_left_button_status(true);
+            } else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
+                mouse_handler.handle_left_button_status(false);
+            } else if (event.type == SDL_EVENT_MOUSE_MOTION) {
+                mouse_drag_motion = mouse_handler.handle_mouse_motion(event.motion.xrel, event.motion.yrel);
             }
         }
 
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(y_rotation_degrees), glm::vec3(0.0f, 1.0f, 0.0f)) * centered_model_translation;
-        y_rotation_degrees += ROTATION_DEGREES_PER_SECOND * delta_time;
+        rotation_degrees_x += mouse_drag_motion.y * ROTATION_DEGREES_PER_PIXEL;
+        rotation_degrees_y += mouse_drag_motion.x * ROTATION_DEGREES_PER_PIXEL;
 
-        glm::mat4 view = glm::lookAt(
+        glm::mat4 rotation_x = glm::rotate(glm::mat4(1.0f), glm::radians(rotation_degrees_x), glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 rotation_y = glm::rotate(glm::mat4(1.0f), glm::radians(rotation_degrees_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model_matrix = rotation_x * rotation_y * centered_model_translation;
+
+        glm::mat4 view_matrix = glm::lookAt(
             camera_position,
             camera_position + glm::vec3(0.0f, 0.0f, -1.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
-        glm::mat4 projection = glm::perspective(
+        glm::mat4 projection_matrix = glm::perspective(
             FOV_Y,
             ASPECT_RATIO,
             NEAR_CLIP_PLANE_DISTANCE,
@@ -272,9 +281,9 @@ int main(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader_program);
-        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model_matrix));
+        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view_matrix));
+        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection_matrix));
         glUniform3fv(camera_world_position_location, 1, glm::value_ptr(camera_position));
         glUniform3fv(sun_direction_location, 1, glm::value_ptr(sun_direction));
         glUniform3f(ambient_light_location, 0.2f, 0.2f, 0.2f);
