@@ -4,9 +4,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-
-#include "Model.h"
-#include "containers_3d.h"
+#include <glm/glm.hpp>
 
 ObjLoader::ObjLoader() {
     // do nothing for now
@@ -45,7 +43,7 @@ std::optional<Model> ObjLoader::load_from_file(const std::string& file_path) {
                 return std::nullopt;
             }
 
-            Vector3 vertex;
+            glm::vec3 vertex;
             vertex.x = std::stof(tokens[1]);
             vertex.y = std::stof(tokens[2]);
             vertex.z = std::stof(tokens[3]);
@@ -58,7 +56,7 @@ std::optional<Model> ObjLoader::load_from_file(const std::string& file_path) {
                 return std::nullopt;
             }
 
-            Vector3 normal;
+            glm::vec3 normal;
             normal.x = std::stof(tokens[1]);
             normal.y = std::stof(tokens[2]);
             normal.z = std::stof(tokens[3]);
@@ -71,7 +69,7 @@ std::optional<Model> ObjLoader::load_from_file(const std::string& file_path) {
                 return std::nullopt;
             }
 
-            Vector2 texture_coordinate;
+            glm::vec2 texture_coordinate;
             texture_coordinate.x = std::stof(tokens[1]);
             texture_coordinate.y = std::stof(tokens[2]);
 

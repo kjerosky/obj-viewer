@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
     bool running = true;
     SDL_Event event;
     while (running) {
-        Vector2 mouse_drag_motion = { 0.0f, 0.0f };
+        glm::vec2 mouse_drag_motion = glm::vec2(0.0f, 0.0f);
         float mouse_wheel_motion = 0.0f;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {

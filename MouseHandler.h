@@ -3,7 +3,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "containers_3d.h"
+#include <glm/glm.hpp>
 
 class MouseHandler {
 
@@ -13,7 +13,7 @@ public:
     ~MouseHandler();
 
     void handle_left_button_status(bool is_button_down);
-    Vector2 handle_mouse_motion(float relative_x, float relative_y);
+    glm::vec2 handle_mouse_motion(float relative_x, float relative_y);
 
 private:
 

@@ -26,8 +26,8 @@ void MouseHandler::handle_left_button_status(bool is_button_down) {
 
 // --------------------------------------------------------------------------
 
-Vector2 MouseHandler::handle_mouse_motion(float relative_x, float relative_y) {
-    Vector2 mouse_drag_motion;
+glm::vec2 MouseHandler::handle_mouse_motion(float relative_x, float relative_y) {
+    glm::vec2 mouse_drag_motion;
     if (is_left_button_down) {
         mouse_drag_motion.x = relative_x;
         mouse_drag_motion.y = relative_y;
