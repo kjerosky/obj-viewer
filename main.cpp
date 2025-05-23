@@ -70,9 +70,26 @@ float calculate_initial_camera_distance_to_object(glm::vec3& dimensions, float f
 
 // --------------------------------------------------------------------------
 
+struct WindowResizeChanges {
+    float rotation_degrees_per_pixel;
+    float aspect_ratio;
+};
+
+WindowResizeChanges handle_window_resize(int new_window_width, int new_window_height) {
+    glViewport(0, 0, new_window_width, new_window_height);
+
+    WindowResizeChanges window_resize_changes;
+    window_resize_changes.rotation_degrees_per_pixel = 360.0f / glm::max(new_window_width, new_window_height);
+    window_resize_changes.aspect_ratio = (float)new_window_width / new_window_height;
+
+    return window_resize_changes;
+}
+
+// --------------------------------------------------------------------------
+
 int main(int argc, char** argv) {
-    const int WINDOW_WIDTH = 500;
-    const int WINDOW_HEIGHT = 500;
+    const int INITIAL_WINDOW_WIDTH = 500;
+    const int INITIAL_WINDOW_HEIGHT = 500;
 
     const char* vertex_shader_file_path = "default.vert";
     const char* fragment_shader_file_path = "default.frag";
@@ -139,7 +156,7 @@ int main(int argc, char** argv) {
     }
     window_title += " - OBJ Viewer";
 
-    SDL_Window* window = SDL_CreateWindow(window_title.c_str(), WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    SDL_Window* window = SDL_CreateWindow(window_title.c_str(), INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!window) {
         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << "\n";
         SDL_Quit();
@@ -222,9 +239,12 @@ int main(int argc, char** argv) {
     float rotation_degrees_x = 0.0f;
     float rotation_degrees_y = 0.0f;
 
-    const float ASPECT_RATIO = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+    WindowResizeChanges window_resize_changes = handle_window_resize(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT);
+    float rotation_degrees_per_pixel = window_resize_changes.rotation_degrees_per_pixel;
+    float aspect_ratio = window_resize_changes.aspect_ratio;
+
     const float FOV_Y = glm::radians(45.0f);
-    const float FOV_X = 2.0f * glm::atan(glm::tan(FOV_Y / 2.0f) * ASPECT_RATIO);
+    const float FOV_X = 2.0f * glm::atan(glm::tan(FOV_Y / 2.0f) * aspect_ratio);
     const float NEAR_CLIP_PLANE_DISTANCE = 0.1f;
     const float FAR_CLIP_PLANE_DISTANCE = 100.0f;
 
@@ -233,7 +253,6 @@ int main(int argc, char** argv) {
 
     glEnable(GL_DEPTH_TEST);
 
-    const float ROTATION_DEGREES_PER_PIXEL = 360.0f / glm::max(WINDOW_WIDTH, WINDOW_HEIGHT);
     const float DISTANCE_PER_MOUSE_WHEEL = 0.1f;
 
     MouseHandler mouse_handler(window);
@@ -258,13 +277,20 @@ int main(int argc, char** argv) {
                 mouse_drag_motion = mouse_handler.handle_mouse_motion(event.motion.xrel, event.motion.yrel);
             } else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
                 mouse_wheel_motion = event.wheel.y;
+            } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                int new_window_width = event.window.data1;
+                int new_window_height = event.window.data2;
+
+                WindowResizeChanges window_resize_changes = handle_window_resize(new_window_width, new_window_height);
+                rotation_degrees_per_pixel = window_resize_changes.rotation_degrees_per_pixel;
+                aspect_ratio = window_resize_changes.aspect_ratio;
             }
         }
 
         camera_position.z += mouse_wheel_motion * DISTANCE_PER_MOUSE_WHEEL;
 
-        rotation_degrees_x += mouse_drag_motion.y * ROTATION_DEGREES_PER_PIXEL;
-        rotation_degrees_y += mouse_drag_motion.x * ROTATION_DEGREES_PER_PIXEL;
+        rotation_degrees_x += mouse_drag_motion.y * rotation_degrees_per_pixel;
+        rotation_degrees_y += mouse_drag_motion.x * rotation_degrees_per_pixel;
 
         glm::mat4 rotation_x = glm::rotate(glm::mat4(1.0f), glm::radians(rotation_degrees_x), glm::vec3(1.0f, 0.0f, 0.0f));
         glm::mat4 rotation_y = glm::rotate(glm::mat4(1.0f), glm::radians(rotation_degrees_y), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -278,7 +304,7 @@ int main(int argc, char** argv) {
 
         glm::mat4 projection_matrix = glm::perspective(
             FOV_Y,
-            ASPECT_RATIO,
+            aspect_ratio,
             NEAR_CLIP_PLANE_DISTANCE,
             FAR_CLIP_PLANE_DISTANCE
         );
