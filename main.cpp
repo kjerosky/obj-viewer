@@ -234,6 +234,7 @@ int main(int argc, char** argv) {
     glEnable(GL_DEPTH_TEST);
 
     const float ROTATION_DEGREES_PER_PIXEL = 360.0f / glm::max(WINDOW_WIDTH, WINDOW_HEIGHT);
+    const float DISTANCE_PER_MOUSE_WHEEL = 0.1f;
 
     MouseHandler mouse_handler(window);
 
@@ -241,6 +242,7 @@ int main(int argc, char** argv) {
     SDL_Event event;
     while (running) {
         Vector2 mouse_drag_motion = { 0.0f, 0.0f };
+        float mouse_wheel_motion = 0.0f;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
@@ -254,8 +256,12 @@ int main(int argc, char** argv) {
                 mouse_handler.handle_left_button_status(false);
             } else if (event.type == SDL_EVENT_MOUSE_MOTION) {
                 mouse_drag_motion = mouse_handler.handle_mouse_motion(event.motion.xrel, event.motion.yrel);
+            } else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+                mouse_wheel_motion = event.wheel.y;
             }
         }
+
+        camera_position.z += mouse_wheel_motion * DISTANCE_PER_MOUSE_WHEEL;
 
         rotation_degrees_x += mouse_drag_motion.y * ROTATION_DEGREES_PER_PIXEL;
         rotation_degrees_y += mouse_drag_motion.x * ROTATION_DEGREES_PER_PIXEL;
